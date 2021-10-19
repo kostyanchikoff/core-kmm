@@ -15,11 +15,6 @@ actual open class CoreViewModel actual constructor(
 
 
     /**
-     * Флаг информирует что ошибка была при первичной работы с корутинами
-     */
-    actual open var isPrimaryError: Boolean = true
-
-    /**
      * Job для работы с карутинами
      */
     protected actual val parentJob: Job
@@ -111,9 +106,12 @@ actual open class CoreViewModel actual constructor(
      * [onLoading] - при загрузке
      * [onResult] - получение результа
      *  [onError] - получение ошибки
+     *  [isShowPrimaryError] - если передать true тогда пользователь увидит экран с ошибком в виде UI,
+     *  в противном случае будет показан тост
      */
     actual open fun <T> launch(
         call: suspend () -> T,
+        isShowPrimaryError: Boolean,
         onLoading: ((Boolean) -> Unit)?,
         onResult: (T) -> Unit,
         onError: ((String) -> Unit?)?
@@ -126,7 +124,7 @@ actual open class CoreViewModel actual constructor(
                 result?.let(onResult)
             } catch (ex: Throwable) {
                 onLoading?.invoke(false)
-                handleDefaultError(ex)
+                handleDefaultError(ex,isShowPrimaryError)
             }
         }
     }
@@ -137,9 +135,12 @@ actual open class CoreViewModel actual constructor(
      * [onLoading] - при загрузке
      * [onResult] - получение результа
      * [onError] - получение ошибки
+     *  [isShowPrimaryError] - если передать true тогда пользователь увидит экран с ошибком в виде UI,
+     *  в противном случае будет показан тост
      */
     actual fun <T, V> launchWithError(
         call: suspend () -> T,
+        isShowPrimaryError: Boolean,
         onLoading: ((Boolean) -> Unit)?,
         onResult: (T) -> Unit,
         onError: (V) -> Unit?
@@ -147,7 +148,7 @@ actual open class CoreViewModel actual constructor(
 
         return scope.launch {
             try {
-               val result =  call.invoke()
+                val result = call.invoke()
                 onLoading?.invoke(false)
                 result?.let(onResult)
             } catch (ex: Throwable) {
@@ -155,7 +156,7 @@ actual open class CoreViewModel actual constructor(
                 val error = ex as? V
 
                 if (error == null) {
-                    handleDefaultError(ex)
+                    handleDefaultError(ex,isShowPrimaryError)
                     return@launch
                 }
 
@@ -170,7 +171,7 @@ actual open class CoreViewModel actual constructor(
      * Отслеживаем ошибки
      * [ex] - исключение
      */
-    private fun handleDefaultError(ex: Throwable) {
+    private fun handleDefaultError(ex: Throwable, isShowPrimaryError: Boolean) {
         when (ex) {
             is CoreHttpException -> {
                 when {
@@ -183,7 +184,8 @@ actual open class CoreViewModel actual constructor(
                     ex.code == HttpURLConnection.HTTP_NOT_FOUND -> {
                         showError(
                             errorState = CoreContract.CoreErrorState.NotFountPage,
-                            errorMessage = ex.error
+                            errorMessage = ex.error,
+                            isShowPrimaryError = isShowPrimaryError
                         )
 
                     }
@@ -191,7 +193,8 @@ actual open class CoreViewModel actual constructor(
 
                         showError(
                             errorState = CoreContract.CoreErrorState.ServerInternalError,
-                            errorMessage = ex.error
+                            errorMessage = ex.error,
+                            isShowPrimaryError = isShowPrimaryError
                         )
 
 
@@ -201,7 +204,8 @@ actual open class CoreViewModel actual constructor(
                         showError(
                             errorState = CoreContract.CoreErrorState.ShowErrorMessage(
                                 ex.message.orEmpty()
-                            ), errorMessage = ex.error
+                            ), errorMessage = ex.error,
+                            isShowPrimaryError = isShowPrimaryError
                         )
 
 
@@ -212,19 +216,23 @@ actual open class CoreViewModel actual constructor(
                 showError(
                     errorState = CoreContract.CoreErrorState.ShowErrorMessage(
                         ex.message.orEmpty()
-                    ), errorMessage = ex.message
+                    ), errorMessage = ex.message,
+                    isShowPrimaryError = isShowPrimaryError
                 )
 
             }
         }
-        isPrimaryError = false
     }
 
     /**
      * Показ ошибки на UI
      */
-    private fun showError(errorState: CoreViewState, errorMessage: String?) {
-        if (isPrimaryError) {
+    private fun showError(
+        errorState: CoreViewState,
+        errorMessage: String?,
+        isShowPrimaryError: Boolean
+    ) {
+        if (isShowPrimaryError) {
             setState {
                 errorState
             }

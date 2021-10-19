@@ -5,7 +5,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
-
 interface CoreViewState
 
 interface CoreViewEvent
@@ -34,10 +33,6 @@ expect open class CoreViewModel(initState: CoreViewState) {
      */
     val effect: SharedFlow<CoreViewSideEffect>
 
-    /**
-     * Флаг информирует что ошибка была при первичной работы с корутинами
-     */
-    open var isPrimaryError: Boolean
 
     /**
      * Job для работы с карутинами
@@ -57,9 +52,12 @@ expect open class CoreViewModel(initState: CoreViewState) {
      * [onLoading] - при загрузке
      * [onResult] - получение результа
      *  [onError] - получение ошибки
+     *  [isShowPrimaryError] - если передать true тогда пользователь увидит экран с ошибком в виде UI,
+     *  в противном случае будет показан тост
      */
     open fun <T> launch(
         call: suspend () -> T,
+        isShowPrimaryError : Boolean = false,
         onLoading: ((Boolean) -> Unit)? = null,
         onResult: (T) -> Unit,
         onError: ((String) -> Unit?)? = null
@@ -72,9 +70,12 @@ expect open class CoreViewModel(initState: CoreViewState) {
      * [onLoading] - при загрузке
      * [onResult] - получение результа
      * [onError] - получение ошибки
+     * [isShowPrimaryError] - если передать true тогда пользователь увидит экран с ошибком в виде UI,
+     *  в противном случае будет показан тост
      */
     fun <T, V> launchWithError(
         call: suspend () -> T,
+        isShowPrimaryError : Boolean = false,
         onLoading: ((Boolean) -> Unit)? = null,
         onResult: (T) -> Unit,
         onError: (V) -> Unit?
